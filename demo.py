@@ -78,6 +78,23 @@ def insert_into_table(table_name, **kwargs):
         finally:
             conn.close()
 
+# Function to search for a record by primary key
+def search_by_primary_key(table_name, primary_key_column):
+    conn = connect_to_mysql()
+    if conn:
+        primary_key_value = st.sidebar.text_input(f"Enter value for {primary_key_column} to search:")
+        search_button = st.sidebar.button("Search")
+        if search_button:
+            query = f"SELECT * FROM {table_name} WHERE {primary_key_column} = '{primary_key_value}';"
+            try:
+                df = pd.read_sql(query, conn)
+                st.write(f"Search result for {primary_key_column} = {primary_key_value}:")
+                st.write(df)
+            except mysql.connector.Error as err:
+                st.error(f"Error executing query: {err}")
+            finally:
+                conn.close()
+
 # Main Streamlit app
 def main():
     st.title("IPL Data Analysis")
@@ -86,7 +103,7 @@ def main():
     tables = ["Matches", "Players", "Teams", "HeadCoach", "Stadium"]
     selected_table = st.sidebar.selectbox("Select table", tables)
 
-    operation = st.sidebar.selectbox("Select operation", ("View", "Insert", "Delete"), index=0)
+    operation = st.sidebar.selectbox("Select operation", ("View", "Insert", "Delete", "Search"), index=0)
 
     if operation == "View":
         if selected_table in tables:
@@ -120,14 +137,24 @@ def main():
                     values[attribute] = st.text_input(f"Enter {attribute}:")
                 else:
                     values[attribute] = st.date_input(f"Enter {attribute}:")
-                    
+
             insert_button = st.button("Insert")
             if insert_button:
                 insert_into_table(selected_table, **values)
         else:
             st.error("Invalid table selected.")
+    elif operation == "Search":
+        if selected_table in tables:
+            st.write(f"Searching record in the {selected_table} table:")
+
+            # Get the primary key column for the selected table
+            primary_key_column = st.selectbox("Search", get_table_attributes(selected_table))
+
+            search_by_primary_key(selected_table, primary_key_column)
+        else:
+            st.error("Invalid table selected.")
     else:
-        st.warning("Only 'View', 'Insert', and 'Delete' operations are supported currently.")
+        st.warning("Only 'View', 'Insert', 'Delete', and 'Search' operations are supported currently.")
 
 if __name__ == "__main__":
     main()
